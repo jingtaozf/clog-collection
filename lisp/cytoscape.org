@@ -1,0 +1,169 @@
+# -*- Mode: POLY-ORG ;-*- ---
+#+Title: CLOG Plugin for Cytoscape.js
+#+OPTIONS: tex:t toc:2 \n:nil @:t ::t |:t ^:nil -:t f:t *:t <:t
+#+STARTUP: latexpreview
+#+STARTUP: noindent
+#+STARTUP: inlineimages
+#+PROPERTY: literate-lang lisp
+#+PROPERTY: literate-load yes
+#+PROPERTY: literate-insert-header no
+#+STARTUP: entitiespretty
+* Table of Contents                                               :noexport:TOC:
+- [[#introduction][Introduction]]
+- [[#preparation][Preparation]]
+  - [[#compilation-options][compilation options]]
+  - [[#a-new-package][a new package]]
+  - [[#switch-to-this-package][switch to this package]]
+- [[#utilities][Utilities]]
+  - [[#encode-associated-list-into-json-string][encode associated list into json string]]
+- [[#data-structure][Data structure]]
+  - [[#cytoscape][cytoscape]]
+    - [[#definition][definition]]
+    - [[#how-to-create-it][how to create it]]
+    - [[#how-to-initialize-it][how to initialize it]]
+- [[#test][Test]]
+  - [[#demo-1][demo 1]]
+  - [[#main-page][main page]]
+  - [[#entry-point][entry point]]
+
+* Introduction
+CLOG Plugin for [[https://js.cytoscape.org/][Cytoscape.js]]
+* Preparation
+** compilation options
+In dev environment, we will disable possible optimization.
+#+BEGIN_SRC lisp :load dev
+(proclaim '(optimize
+            (compilation-speed 0)
+            (debug 3)
+            (safety 3)
+            (space 0)
+            (speed 0)))
+#+END_SRC
+** a new package
+Let's create an individual package for this module.
+#+BEGIN_SRC lisp
+(defpackage #:clog-collection
+  (:use :cl :alexandria :iterate :clog :clog-gui #:clog-web)
+  (:shadowing-import-from #:clog #:rotate #:escape-string #:multiply)
+  (:export )
+  (:documentation "CLOG plugin for Cytoscaple.js"))
+#+END_SRC
+** switch to this package
+#+BEGIN_SRC lisp
+(in-package :clog-collection)
+#+END_SRC
+* Utilities
+** encode associated list into json string
+#+BEGIN_SRC lisp
+(defun ->json (obj)
+  (with-output-to-string (stream)
+    (yason:encode obj stream)))
+#+END_SRC
+
+* Data structure
+** cytoscape
+*** definition
+#+BEGIN_SRC lisp
+(defclass clog-cytoscape (clog-element)
+  ((elements :initarg :elements :accessor cytoscape-elements)
+   (style :initarg :style :accessor cytoscape-style)
+   (layout :initarg :layout :accessor cytoscape-layout))
+  (:documentation "clog-cytoscape Object."))
+#+END_SRC
+*** how to create it
+#+BEGIN_SRC lisp
+(defgeneric create-clog-cytoscape (obj &key
+                                         hidden
+                                         class
+                                         html-id
+                                         load-js
+                                         auto-place)
+  (:documentation "Create a new clog-cytoscape object in lisp."))
+
+(defmethod create-clog-cytoscape ((obj clog:clog-obj)
+                                  &key
+                                    (hidden nil)
+                                    (class nil)
+                                    (html-id (symbol-name (gensym "cytoscape")))
+                                    (load-js t)
+                                    (auto-place t))
+  "Create control - used at design time and in code"
+  (let ((new-obj (create-div obj
+                             :class class
+                             :hidden hidden
+                             :html-id html-id
+                             :auto-place auto-place)))
+    (set-geometry new-obj :width 400 :height 300)
+    (change-class new-obj 'clog-cytoscape)
+    (when load-js
+      (load-script (html-document (connection-data-item obj "clog-body"))
+                   "https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.25.0/cytoscape.min.js"))
+    new-obj))
+#+END_SRC
+*** how to initialize it
+#+BEGIN_SRC lisp
+(defgeneric new-clog-cytoscape (obj json-elements json-style json-layout)
+  (:documentation "Create a new clog-cytoscape object in html."))
+
+(defmethod new-clog-cytoscape ((obj clog-cytoscape) json-elements json-style json-layout)
+  (setf (cytoscape-elements obj) json-elements
+        (cytoscape-style obj) json-style
+        (cytoscape-layout obj) json-layout)
+  (js-execute obj (format nil "cytoscape({ container: document.getElementById('~a'),
+        elements: ~a,
+        style: ~a,
+        layout: ~a
+});"
+                          (html-id obj)
+                          (->json json-elements)
+                          (->json json-style)
+                          (->json json-layout))))
+#+END_SRC
+* Test
+** demo 1
+#+BEGIN_SRC lisp
+(defun cytoscape-demo1 (row)
+  (let ((obj (create-clog-cytoscape row))
+        (elements (list (plist-hash-table `("data" ,(plist-hash-table '("id" "a"))))
+                        (plist-hash-table `("data" ,(plist-hash-table '("id" "b"))))
+                        (plist-hash-table `("data" ,(plist-hash-table '("id" "ab" "source" "a" "target" "b"))))))
+        (style (list (plist-hash-table `("selector" "node"
+                                                    "style" ,(plist-hash-table '("background-color" "#666"
+                                                                                 "label" "data(id)"))))
+                     (plist-hash-table `("selector" "edge"
+                                                    "style" ,(plist-hash-table '( "width" 3
+                                                                                 "line-color" "#ccc"
+                                                                                 "target-arrow-color" "#ccc"
+                                                                                 "target-arrow-shape" "triangle"
+                                                                                 "curve-style" "bezier"))))))
+        (layout (plist-hash-table '("name" "grid"
+                                    "rows" 1))))
+    (new-clog-cytoscape obj elements style layout)))
+#+END_SRC
+
+** main page
+#+BEGIN_SRC lisp
+(defun cytoscape-demo-page (body)
+  (let* ((row1    (create-web-auto-row    body))
+         (column1 (create-web-auto-column row1))
+         (row2    (create-web-auto-row    body))
+         (demo1 (create-button column1 :content "demo1"))
+         )
+    (center-children row1)
+    (set-on-click demo1 (lambda (obj)
+                          (declare (ignore obj))
+                          (setf (inner-html row2) "")
+                          (cytoscape-demo1 row2)
+                          (center-children row2)))))
+#+END_SRC
+** entry point
+#+BEGIN_SRC lisp
+(defun on-new-cytoscape-window (body)
+  (cytoscape-demo-page body))
+#+END_SRC
+
+One examle code to use it in a clog server
+#+BEGIN_SRC lisp :load no
+(set-on-new-window 'clog-collection::on-new-cytoscape-window :path "/cytoscape" :boot-file "/editor/index.html")
+#+END_SRC
+
