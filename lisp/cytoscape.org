@@ -15,6 +15,7 @@
   - [[#a-new-package][a new package]]
   - [[#switch-to-this-package][switch to this package]]
 - [[#utilities][Utilities]]
+  - [[#create-hash-table-from-plist][create hash table from plist]]
   - [[#encode-associated-list-into-json-string][encode associated list into json string]]
 - [[#data-structure][Data structure]]
   - [[#cytoscape][cytoscape]]
@@ -53,6 +54,12 @@ Let's create an individual package for this module.
 (in-package :clog-collection)
 #+END_SRC
 * Utilities
+** create hash table from plist
+#+BEGIN_SRC lisp
+(defun plist->hash (&rest args)
+  (plist-hash-table args :test #'equal))
+#+END_SRC
+
 ** encode associated list into json string
 #+BEGIN_SRC lisp
 (defun ->json (obj)
@@ -86,6 +93,8 @@ Let's create an individual package for this module.
                                     (class nil)
                                     (html-id (symbol-name (gensym "cytoscape")))
                                     (load-js t)
+                                   (width 400)
+                                  (height 300)
                                     (auto-place t))
   "Create control - used at design time and in code"
   (let ((new-obj (create-div obj
@@ -93,7 +102,7 @@ Let's create an individual package for this module.
                              :hidden hidden
                              :html-id html-id
                              :auto-place auto-place)))
-    (set-geometry new-obj :width 400 :height 300)
+    (set-geometry new-obj :width width :height height)
     (change-class new-obj 'clog-cytoscape)
     (when load-js
       (load-script (html-document (connection-data-item obj "clog-body"))
@@ -123,21 +132,21 @@ Let's create an individual package for this module.
 ** demo 1
 #+BEGIN_SRC lisp
 (defun cytoscape-demo1 (row)
-  (let ((obj (create-clog-cytoscape row))
-        (elements (list (plist-hash-table `("data" ,(plist-hash-table '("id" "a"))))
-                        (plist-hash-table `("data" ,(plist-hash-table '("id" "b"))))
-                        (plist-hash-table `("data" ,(plist-hash-table '("id" "ab" "source" "a" "target" "b"))))))
-        (style (list (plist-hash-table `("selector" "node"
-                                                    "style" ,(plist-hash-table '("background-color" "#666"
-                                                                                 "label" "data(id)"))))
-                     (plist-hash-table `("selector" "edge"
-                                                    "style" ,(plist-hash-table '( "width" 3
-                                                                                 "line-color" "#ccc"
-                                                                                 "target-arrow-color" "#ccc"
-                                                                                 "target-arrow-shape" "triangle"
-                                                                                 "curve-style" "bezier"))))))
-        (layout (plist-hash-table '("name" "grid"
-                                    "rows" 1))))
+  (let ((obj (create-clog-cytoscape row :width 600 :height 600))
+        (elements (list (plist->hash `("data" ,(plist->hash '("id" "a"))))
+                        (plist->hash `("data" ,(plist->hash '("id" "b"))))
+                        (plist->hash `("data" ,(plist->hash '("id" "ab" "source" "a" "target" "b"))))))
+        (style (list (plist->hash `("selector" "node"
+                                               "style" ,(plist->hash '("background-color" "#666"
+                                                                       "label" "data(id)"))))
+                     (plist->hash `("selector" "edge"
+                                               "style" ,(plist->hash '("width" 3
+                                                                       "line-color" "#ccc"
+                                                                       "target-arrow-color" "#ccc"
+                                                                       "target-arrow-shape" "triangle"
+                                                                       "curve-style" "bezier"))))))
+        (layout (plist->hash '("name" "grid"
+                               "rows" 1))))
     (new-clog-cytoscape obj elements style layout)))
 #+END_SRC
 
