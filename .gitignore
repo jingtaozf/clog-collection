@@ -1,1 +1,9 @@
 *.64yfasl
+/dist/
+/node_modules/
+/www/app.css
+/www/js/35d57320d9df28ec0d0d.png
+/www/js/app.js
+/www/js/css.js
+/www/js/*.png
+/yarn-error.log

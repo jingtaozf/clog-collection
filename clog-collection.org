@@ -1,5 +1,5 @@
 # -*- Mode: POLY-ORG ;-*- ---
-#+Title: CLOG Plugin for Cytoscape.js
+#+Title: A set of CLOG Plugins
 #+OPTIONS: tex:t toc:2 \n:nil @:t ::t |:t ^:nil -:t f:t *:t <:t
 #+STARTUP: latexpreview
 #+STARTUP: noindent
@@ -17,15 +17,15 @@
 - [[#utilities][Utilities]]
   - [[#create-hash-table-from-plist][create hash table from plist]]
   - [[#encode-associated-list-into-json-string][encode associated list into json string]]
-- [[#data-structure][Data structure]]
-  - [[#cytoscape][cytoscape]]
-    - [[#definition][definition]]
-    - [[#how-to-create-it][how to create it]]
-    - [[#how-to-initialize-it][how to initialize it]]
+- [[#cytoscape][cytoscape]]
+  - [[#definition][definition]]
+  - [[#how-to-create-it][how to create it]]
+  - [[#demo][Demo]]
+    - [[#demo-1][demo 1]]
 - [[#test][Test]]
-  - [[#demo-1][demo 1]]
   - [[#main-page][main page]]
-  - [[#entry-point][entry point]]
+  - [[#entry-point-for-demo-page][entry point for demo page]]
+  - [[#start-test][start test]]
 
 * Introduction
 CLOG Plugin for [[https://js.cytoscape.org/][Cytoscape.js]]
@@ -67,9 +67,8 @@ Let's create an individual package for this module.
     (yason:encode obj stream)))
 #+END_SRC
 
-* Data structure
-** cytoscape
-*** definition
+* cytoscape
+** definition
 #+BEGIN_SRC lisp
 (defclass clog-cytoscape (clog-element)
   ((elements :initarg :elements :accessor cytoscape-elements)
@@ -77,9 +76,10 @@ Let's create an individual package for this module.
    (layout :initarg :layout :accessor cytoscape-layout))
   (:documentation "clog-cytoscape Object."))
 #+END_SRC
-*** how to create it
+** how to create it
 #+BEGIN_SRC lisp
 (defgeneric create-clog-cytoscape (obj &key
+                                         elements style layout
                                          hidden
                                          class
                                          html-id
@@ -89,6 +89,7 @@ Let's create an individual package for this module.
 
 (defmethod create-clog-cytoscape ((obj clog:clog-obj)
                                   &key
+                                    elements style layout
                                     (hidden nil)
                                     (class nil)
                                     (html-id (symbol-name (gensym "cytoscape")))
@@ -97,67 +98,61 @@ Let's create an individual package for this module.
                                   (height 300)
                                     (auto-place t))
   "Create control - used at design time and in code"
-  (let ((new-obj (create-div obj
+  (let ((obj (create-div obj
                              :class class
                              :hidden hidden
                              :html-id html-id
                              :auto-place auto-place)))
-    (set-geometry new-obj :width width :height height)
-    (change-class new-obj 'clog-cytoscape)
+    (set-geometry obj :width width :height height)
+    (change-class obj 'clog-cytoscape)
     (when load-js
       (load-script (html-document (connection-data-item obj "clog-body"))
                    "https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.25.0/cytoscape.min.js"))
-    new-obj))
-#+END_SRC
-*** how to initialize it
-#+BEGIN_SRC lisp
-(defgeneric new-clog-cytoscape (obj json-elements json-style json-layout)
-  (:documentation "Create a new clog-cytoscape object in html."))
-
-(defmethod new-clog-cytoscape ((obj clog-cytoscape) json-elements json-style json-layout)
-  (setf (cytoscape-elements obj) json-elements
-        (cytoscape-style obj) json-style
-        (cytoscape-layout obj) json-layout)
-  (js-execute obj (format nil "cytoscape({ container: document.getElementById('~a'),
+    (setf (cytoscape-elements obj) elements
+        (cytoscape-style obj) style
+        (cytoscape-layout obj) layout)
+    (js-execute obj (format nil "cytoscape({ container: document.getElementById('~a'),
         elements: ~a,
         style: ~a,
         layout: ~a
 });"
-                          (html-id obj)
-                          (->json json-elements)
-                          (->json json-style)
-                          (->json json-layout))))
+                            (html-id obj)
+                            (->json elements)
+                            (->json style)
+                            (->json layout)))
+    obj))
 #+END_SRC
-* Test
-** demo 1
+** Demo
+*** demo 1
 #+BEGIN_SRC lisp
 (defun cytoscape-demo1 (row)
-  (let ((obj (create-clog-cytoscape row :width 600 :height 600))
-        (elements (list (plist->hash `("data" ,(plist->hash '("id" "a"))))
-                        (plist->hash `("data" ,(plist->hash '("id" "b"))))
-                        (plist->hash `("data" ,(plist->hash '("id" "ab" "source" "a" "target" "b"))))))
-        (style (list (plist->hash `("selector" "node"
-                                               "style" ,(plist->hash '("background-color" "#666"
-                                                                       "label" "data(id)"))))
-                     (plist->hash `("selector" "edge"
-                                               "style" ,(plist->hash '("width" 3
-                                                                       "line-color" "#ccc"
-                                                                       "target-arrow-color" "#ccc"
-                                                                       "target-arrow-shape" "triangle"
-                                                                       "curve-style" "bezier"))))))
-        (layout (plist->hash '("name" "grid"
-                               "rows" 1))))
-    (new-clog-cytoscape obj elements style layout)))
+  (let* ((elements (list (plist->hash "data" (plist->hash "id" "a"))
+                         (plist->hash "data" (plist->hash "id" "b"))
+                         (plist->hash "data" (plist->hash "id" "ab" "source" "a" "target" "b"))))
+         (style (list (plist->hash "selector" "node"
+                                   "style" (plist->hash "background-color" "#666"
+                                                        "label" "data(id)"))
+                      (plist->hash "selector" "edge"
+                                   "style" (plist->hash "width" 3
+                                                        "line-color" "#ccc"
+                                                        "target-arrow-color" "#ccc"
+                                                        "target-arrow-shape" "triangle"
+                                                        "curve-style" "bezier"))))
+         (layout (plist->hash "name" "grid" "rows" 1))
+         (obj (create-clog-cytoscape row :width 600 :height 600 :elements elements :style style :layout layout :load-js nil)))
+    obj))
 #+END_SRC
 
+
+* Test
 ** main page
 #+BEGIN_SRC lisp
-(defun cytoscape-demo-page (body)
+(defun demo-page (body)
+  #+dev(js-execute body "clog_debug = true")
   (let* ((row1    (create-web-auto-row    body))
          (column1 (create-web-auto-column row1))
          (row2    (create-web-auto-row    body))
-         (demo1 (create-button column1 :content "demo1"))
-         )
+         (demo1 (create-button column1 :content "demo1")))
     (center-children row1)
     (set-on-click demo1 (lambda (obj)
                           (declare (ignore obj))
@@ -165,14 +160,19 @@ Let's create an individual package for this module.
                           (cytoscape-demo1 row2)
                           (center-children row2)))))
 #+END_SRC
-** entry point
+** entry point for demo page
 #+BEGIN_SRC lisp
-(defun on-new-cytoscape-window (body)
-  (cytoscape-demo-page body))
+(defun on-new-demo-window (body)
+  (demo-page body))
 #+END_SRC
-
-One examle code to use it in a clog server
-#+BEGIN_SRC lisp :load no
-(set-on-new-window 'clog-collection::on-new-cytoscape-window :path "/cytoscape" :boot-file "/editor/index.html")
+** start test
+#+BEGIN_SRC lisp
+(defun start-test ()
+  (initialize 'on-new-demo-window
+              :host "127.0.0.1"
+              :port 8090
+              :static-root (merge-pathnames "./www/"
+                                            (asdf:system-source-directory :clog-collection)))
+  (open-browser))
 #+END_SRC
 

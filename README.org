@@ -11,4 +11,4 @@
 
 * Introduction
 This library includes a collection set for clog plugins, featuring:
-- [[./lisp/cytoscape.org][clog-cytoscape]] for [[https://js.cytoscape.org][cytoscape.js]]
+- [[./clog-collection.org][clog-cytoscape]] for [[https://js.cytoscape.org][cytoscape.js]]

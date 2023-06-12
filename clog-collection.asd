@@ -4,8 +4,8 @@
 ;; Description: A set of CLOG Plugins
 ;; Author: Jingtao Xu <jingtaozf@gmail.com>
 ;; Created: 2023.05.31 21:27:16(+0800)
-;; Last-Updated: 2023.06.07 21:51:31(+0800)
-;;     Update #: 21
+;; Last-Updated: 2023.06.12 12:16:25(+0800)
+;;     Update #: 22
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;;; Commentary:
@@ -28,6 +28,6 @@
   :depends-on (#:iterate #:alexandria #:clog #:yason)
   :entry-point
   "clog-collection:start-test"
-  :components ((:module :base :pathname "./lisp"
+  :components ((:module :base :pathname "./"
                 :serial t
-                :components ((:org "cytoscape")))))
+                :components ((:org "clog-collection")))))

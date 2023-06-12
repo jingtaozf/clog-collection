@@ -1,0 +1,25 @@
+{
+  "name": "clog-collection",
+  "version": "1.0.0",
+  "main": "app.js",
+  "repository": "git@github.com:jingtaozf/clog-collection.git",
+  "author": "Jingtao Xu <jingtaozf@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "codemirror": "^6.0.1",
+    "css-loader": "^6.8.1",
+    "cytoscape": "^3.25.0",
+    "cytoscape-dagre": "^2.5.0",
+    "jquery": "^3.7.0",
+    "jquery-ui": "^1.13.2",
+    "style-loader": "^3.3.3",
+    "webpack": "^5.86.0"
+  },
+  "scripts": {
+    "dev": "webpack --mode development",
+    "build": "webpack --mode production"
+  },
+  "devDependencies": {
+    "webpack-cli": "^5.1.4"
+  }
+}
