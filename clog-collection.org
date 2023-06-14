@@ -27,6 +27,7 @@
   - [[#how-to-create-it-1][how to create it]]
     - [[#js][js]]
     - [[#lisp][lisp]]
+    - [[#text-value][text-value]]
   - [[#demo-2][Demo]]
     - [[#demo-1-1][demo 1]]
 - [[#test][Test]]
@@ -164,27 +165,28 @@ Let's create an individual package for this module.
 *** js
 #+NAME: clog.js.codemirror.new
 #+BEGIN_SRC js
-let language = new CodeMirror.Compartment;
-let tabSize  = new CodeMirror.Compartment;
+let language = new CodeMirror.Compartment();
+let tabSize  = new CodeMirror.Compartment();
 
 let state = CodeMirror.EditorState.create({
     extensions: [
 	CodeMirror.basicSetup,
-	language.of(CodeMirror.~a.~a()),
-	tabSize.of(CodeMirror.EditorState.tabSize.of(4))
+	tabSize.of(CodeMirror.EditorState.tabSize.of(~a))
+	~@[,~a~]
     ]
 });
-
-let view = new CodeMirror.EditorView({
+clog['codemirror']  = clog['codemirror'] || {};
+clog['codemirror'][~s] = new CodeMirror.EditorView({
     state,
-    parent: ~a
+    parent: document.getElementById(~s)
 });
 #+END_SRC
 
 *** lisp
 #+BEGIN_SRC lisp
 (defgeneric create-clog-codemirror (obj &key
-                                          language 
+                                          tab-size
+                                          extentions
                                           hidden
                                           class
                                           html-id
@@ -193,7 +195,8 @@ let view = new CodeMirror.EditorView({
 
 (defmethod create-clog-codemirror ((obj clog:clog-obj)
                                    &key
-                                     language
+                                     (tab-size 8)
+                                     extentions
                                      (hidden nil)
                                      (class nil)
                                      (html-id (symbol-name (gensym "codemirror")))
@@ -208,14 +211,23 @@ let view = new CodeMirror.EditorView({
                              :auto-place auto-place)))
     (set-geometry obj :width width :height height)
     (change-class obj 'clog-codemirror)
-    (js-execute obj (format nil clog.js.codemirror.new language language (html-id obj)))
+    (js-execute obj (format nil clog.js.codemirror.new tab-size extentions (html-id obj) (html-id obj)))
     obj))
 #+END_SRC
+
+*** text-value
+#+BEGIN_SRC lisp
+(defmethod text-value ((obj clog-codemirror))
+  (js-query obj (format nil "clog['codemirror'][~s].viewState.state.doc.toString()"
+                        (html-id obj))))
+#+END_SRC
+
 ** Demo
 *** demo 1
 #+BEGIN_SRC lisp
 (defun codemirror-demo1 (row)
-  (let* ((obj (create-clog-codemirror row :width 600 :height 600 :language "javascript")))
+  (let* ((obj (create-clog-codemirror row :width 600 :height 600 :extentions "language.of(CodeMirror.javascript.javascript()),
+")))
     obj))
 #+END_SRC
 * Test
