@@ -28,6 +28,7 @@
     - [[#js][js]]
     - [[#lisp][lisp]]
     - [[#text-value][text-value]]
+    - [[#setf-text-value][setf text-value]]
   - [[#demo-2][Demo]]
     - [[#demo-1-1][demo 1]]
 - [[#test][Test]]
@@ -220,6 +221,13 @@ clog['codemirror'][~s] = new CodeMirror.EditorView({
 (defmethod text-value ((obj clog-codemirror))
   (js-query obj (format nil "clog['codemirror'][~s].viewState.state.doc.toString()"
                         (html-id obj))))
+#+END_SRC
+
+*** setf text-value
+#+BEGIN_SRC lisp
+(defmethod (setf text-value) (value (obj clog-codemirror))
+  (js-execute obj (format nil "clog['codemirror'][~s].dispatch({ changes: {from: 0, to: clog['codemirror'][~s].viewState.state.doc.length, insert: ~s}}); "
+                          (html-id obj) (html-id obj) value)))
 #+END_SRC
 
 ** Demo
