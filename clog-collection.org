@@ -53,7 +53,9 @@ Let's create an individual package for this module.
 (defpackage #:clog-collection
   (:use :cl :alexandria :iterate :clog :clog-gui #:clog-web)
   (:shadowing-import-from #:clog #:rotate #:escape-string #:multiply)
-  (:export )
+  (:export
+   #:create-clog-cytoscape
+   #:create-clog-codemirror)
   (:documentation "CLOG plugin for Cytoscaple.js"))
 #+END_SRC
 ** switch to this package
