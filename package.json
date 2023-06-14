@@ -6,10 +6,12 @@
   "author": "Jingtao Xu <jingtaozf@gmail.com>",
   "license": "MIT",
   "dependencies": {
+    "@codemirror/lang-javascript": "^6.1.9",
     "codemirror": "^6.0.1",
     "css-loader": "^6.8.1",
     "cytoscape": "^3.25.0",
     "cytoscape-dagre": "^2.5.0",
+    "expose-loader": "^4.1.0",
     "jquery": "^3.7.0",
     "jquery-ui": "^1.13.2",
     "style-loader": "^3.3.3",

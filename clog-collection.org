@@ -22,6 +22,13 @@
   - [[#how-to-create-it][how to create it]]
   - [[#demo][Demo]]
     - [[#demo-1][demo 1]]
+- [[#codemirror][codemirror]]
+  - [[#definition-1][definition]]
+  - [[#how-to-create-it-1][how to create it]]
+    - [[#js][js]]
+    - [[#lisp][lisp]]
+  - [[#demo-2][Demo]]
+    - [[#demo-1-1][demo 1]]
 - [[#test][Test]]
   - [[#main-page][main page]]
   - [[#entry-point-for-demo-page][entry point for demo page]]
@@ -144,20 +151,92 @@ Let's create an individual package for this module.
 #+END_SRC
 
 
+* codemirror
+** definition
+#+BEGIN_SRC lisp
+(defclass clog-codemirror (clog-element)
+  ((language :initarg :language :accessor cytoscape-language))
+  (:documentation "clog-codemirror Object."))
+#+END_SRC
+** how to create it
+*** js
+#+NAME: clog.js.codemirror.new
+#+BEGIN_SRC js
+let language = new CodeMirror.Compartment;
+let tabSize  = new CodeMirror.Compartment;
+
+let state = CodeMirror.EditorState.create({
+    extensions: [
+	CodeMirror.basicSetup,
+	language.of(CodeMirror.~a.~a()),
+	tabSize.of(CodeMirror.EditorState.tabSize.of(4))
+    ]
+});
+
+let view = new CodeMirror.EditorView({
+    state,
+    parent: ~a
+});
+#+END_SRC
+
+*** lisp
+#+BEGIN_SRC lisp
+(defgeneric create-clog-codemirror (obj &key
+                                          language 
+                                          hidden
+                                          class
+                                          html-id
+                                          auto-place)
+  (:documentation "Create a new clog-codemirror object in lisp."))
+
+(defmethod create-clog-codemirror ((obj clog:clog-obj)
+                                   &key
+                                     language
+                                     (hidden nil)
+                                     (class nil)
+                                     (html-id (symbol-name (gensym "codemirror")))
+                                     (width 400)
+                                     (height 300)
+                                     (auto-place t))
+  "Create control - used at design time and in code"
+  (let ((obj (create-div obj
+                             :class class
+                             :hidden hidden
+                             :html-id html-id
+                             :auto-place auto-place)))
+    (set-geometry obj :width width :height height)
+    (change-class obj 'clog-codemirror)
+    (js-execute obj (format nil clog.js.codemirror.new language language (html-id obj)))
+    obj))
+#+END_SRC
+** Demo
+*** demo 1
+#+BEGIN_SRC lisp
+(defun codemirror-demo1 (row)
+  (let* ((obj (create-clog-codemirror row :width 600 :height 600 :language "javascript")))
+    obj))
+#+END_SRC
 * Test
 ** main page
 #+BEGIN_SRC lisp
 (defun demo-page (body)
-  #+dev(js-execute body "clog_debug = true")
+  #+dev(debug-mode body)
   (let* ((row1    (create-web-auto-row    body))
-         (column1 (create-web-auto-column row1))
+         (column1 (create-web-auto-column row1 :class "w3-margin"))
+         (column2 (create-web-auto-column row1 :class "w3-margin"))
          (row2    (create-web-auto-row    body))
-         (demo1 (create-button column1 :content "demo1")))
+         (demo1 (create-button column1 :content "Cytoscape-Demo1"))
+         (demo2 (create-button column2 :content "CodeMirror-Demo1")))
     (center-children row1)
     (set-on-click demo1 (lambda (obj)
                           (declare (ignore obj))
                           (setf (inner-html row2) "")
                           (cytoscape-demo1 row2)
+                          (center-children row2)))
+    (set-on-click demo2 (lambda (obj)
+                          (declare (ignore obj))
+                          (setf (inner-html row2) "")
+                          (codemirror-demo1 row2)
                           (center-children row2)))))
 #+END_SRC
 ** entry point for demo page
