@@ -105,8 +105,6 @@ Let's create an individual package for this module.
                                     (class nil)
                                     (html-id (symbol-name (gensym "cytoscape")))
                                     (load-js t)
-                                   (width 400)
-                                  (height 300)
                                     (auto-place t))
   "Create control - used at design time and in code"
   (let ((obj (create-div obj
@@ -114,7 +112,6 @@ Let's create an individual package for this module.
                              :hidden hidden
                              :html-id html-id
                              :auto-place auto-place)))
-    (set-geometry obj :width width :height height)
     (change-class obj 'clog-cytoscape)
     (when load-js
       (load-script (html-document (connection-data-item obj "clog-body"))
@@ -150,7 +147,8 @@ Let's create an individual package for this module.
                                                         "target-arrow-shape" "triangle"
                                                         "curve-style" "bezier"))))
          (layout (plist->hash "name" "grid" "rows" 1))
-         (obj (create-clog-cytoscape row :width 600 :height 600 :elements elements :style style :layout layout :load-js nil)))
+         (obj (create-clog-cytoscape row :elements elements :style style :layout layout :load-js nil)))
+    (set-geometry obj :width 600 :height 600)
     obj))
 #+END_SRC
 
@@ -201,8 +199,6 @@ clog['codemirror'][~s] = new CodeMirror.EditorView({
                                      (hidden nil)
                                      (class nil)
                                      (html-id (symbol-name (gensym "codemirror")))
-                                     (width 400)
-                                     (height 300)
                                      (auto-place t))
   "Create control - used at design time and in code"
   (let ((obj (create-div obj
@@ -210,7 +206,6 @@ clog['codemirror'][~s] = new CodeMirror.EditorView({
                              :hidden hidden
                              :html-id html-id
                              :auto-place auto-place)))
-    (set-geometry obj :width width :height height)
     (change-class obj 'clog-codemirror)
     (js-execute obj (format nil clog.js.codemirror.new tab-size extentions (html-id obj) (html-id obj)))
     obj))
@@ -234,8 +229,9 @@ clog['codemirror'][~s] = new CodeMirror.EditorView({
 *** demo 1
 #+BEGIN_SRC lisp
 (defun codemirror-demo1 (row)
-  (let* ((obj (create-clog-codemirror row :width 600 :height 600 :extentions "language.of(CodeMirror.javascript.javascript()),
+  (let* ((obj (create-clog-codemirror row :extentions "language.of(CodeMirror.javascript.javascript()),
 ")))
+    (set-geometry obj :width 600 :height 600)
     obj))
 #+END_SRC
 * Test
