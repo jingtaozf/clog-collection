@@ -65,7 +65,8 @@ Let's create an individual package for this module.
   (:shadowing-import-from #:clog #:rotate #:escape-string #:multiply)
   (:export
    #:create-clog-cytoscape
-   #:create-clog-codemirror)
+   #:create-clog-codemirror
+   #:create-clog-jsonview)
   (:documentation "CLOG plugin for Cytoscaple.js"))
 #+END_SRC
 ** switch to this package
@@ -280,11 +281,12 @@ clog['jsonview'][~s] = new Jsonview.EditorView({
 *** lisp
 #+BEGIN_SRC lisp
 (defgeneric create-clog-jsonview (obj &key
-                                          json
-                                          hidden
-                                          class
-                                          html-id
-                                          auto-place)
+                                        ;; Can be either a string or a json object.
+                                        json
+                                        hidden
+                                        class
+                                        html-id
+                                        auto-place)
   (:documentation "Create a new clog-jsonview object in lisp."))
 
 (defmethod create-clog-jsonview ((obj clog:clog-obj)
@@ -302,7 +304,10 @@ clog['jsonview'][~s] = new Jsonview.EditorView({
                          :auto-place auto-place)))
     (change-class obj 'clog-jsonview)
     (js-execute obj (format nil "jsonview.render(jsonview.create(~s), document.getElementById('~a'));"
-                            (->json json) (html-id obj)))
+                            (if (stringp json)
+                                json
+                                (->json json))
+                            (html-id obj)))
     obj))
 #+END_SRC
 
