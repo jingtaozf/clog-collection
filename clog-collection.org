@@ -27,10 +27,18 @@
   - [[#how-to-create-it-1][how to create it]]
     - [[#js][js]]
     - [[#lisp][lisp]]
-    - [[#text-value][text-value]]
-    - [[#setf-text-value][setf text-value]]
+  - [[#text-value][text-value]]
+  - [[#setf-text-value][setf text-value]]
+  - [[#remove-local-instance-in-js-side-when-destroy][remove local instance in js side when destroy]]
   - [[#demo-2][Demo]]
     - [[#demo-1-1][demo 1]]
+- [[#jsonview][jsonview]]
+  - [[#definition-2][definition]]
+  - [[#how-to-create-it-2][how to create it]]
+    - [[#js-1][js]]
+    - [[#lisp-1][lisp]]
+  - [[#demo-3][Demo]]
+    - [[#demo-1-2][demo 1]]
 - [[#test][Test]]
   - [[#main-page][main page]]
   - [[#entry-point-for-demo-page][entry point for demo page]]
@@ -211,18 +219,25 @@ clog['codemirror'][~s] = new CodeMirror.EditorView({
     obj))
 #+END_SRC
 
-*** text-value
+** text-value
 #+BEGIN_SRC lisp
 (defmethod text-value ((obj clog-codemirror))
   (js-query obj (format nil "clog['codemirror'][~s].viewState.state.doc.toString()"
                         (html-id obj))))
 #+END_SRC
 
-*** setf text-value
+** setf text-value
 #+BEGIN_SRC lisp
 (defmethod (setf text-value) (value (obj clog-codemirror))
   (js-execute obj (format nil "clog['codemirror'][~s].dispatch({ changes: {from: 0, to: clog['codemirror'][~s].viewState.state.doc.length, insert: ~s}}); "
                           (html-id obj) (html-id obj) value)))
+#+END_SRC
+
+** remove local instance in js side when destroy
+#+BEGIN_SRC lisp
+(defmethod remove-from-dom :after ((obj clog-codemirror))
+  (js-execute obj (format nil "delete clog['codemirror'][~s];"
+                                (html-id obj))))
 #+END_SRC
 
 ** Demo
@@ -234,6 +249,74 @@ clog['codemirror'][~s] = new CodeMirror.EditorView({
     (set-geometry obj :width 600 :height 600)
     obj))
 #+END_SRC
+* jsonview
+** definition
+#+BEGIN_SRC lisp
+(defclass clog-jsonview (clog-element)
+  ((language :initarg :language :accessor cytoscape-language))
+  (:documentation "clog-jsonview Object."))
+#+END_SRC
+** how to create it
+*** js
+#+NAME: clog.js.jsonview.new
+#+BEGIN_SRC js
+let language = new Jsonview.Compartment();
+let tabSize  = new Jsonview.Compartment();
+
+let state = Jsonview.EditorState.create({
+    extensions: [
+	Jsonview.basicSetup,
+	tabSize.of(Jsonview.EditorState.tabSize.of(~a))
+	~@[,~a~]
+    ]
+});
+clog['jsonview']  = clog['jsonview'] || {};
+clog['jsonview'][~s] = new Jsonview.EditorView({
+    state,
+    parent: document.getElementById(~s)
+});
+#+END_SRC
+
+*** lisp
+#+BEGIN_SRC lisp
+(defgeneric create-clog-jsonview (obj &key
+                                          json
+                                          hidden
+                                          class
+                                          html-id
+                                          auto-place)
+  (:documentation "Create a new clog-jsonview object in lisp."))
+
+(defmethod create-clog-jsonview ((obj clog:clog-obj)
+                                 &key
+                                   json
+                                   (hidden nil)
+                                   (class nil)
+                                   (html-id (symbol-name (gensym "jsonview")))
+                                   (auto-place t))
+  "Create control - used at design time and in code"
+  (let ((obj (create-div obj
+                         :class class
+                         :hidden hidden
+                         :html-id html-id
+                         :auto-place auto-place)))
+    (change-class obj 'clog-jsonview)
+    (js-execute obj (format nil "jsonview.render(jsonview.create(~s), document.getElementById('~a'));"
+                            (->json json) (html-id obj)))
+    obj))
+#+END_SRC
+
+** Demo
+*** demo 1
+#+BEGIN_SRC lisp
+(defun jsonview-demo1 (row)
+  (let* ((obj (create-clog-jsonview row :json (plist->hash "givenName" "Vas" "familyName" "Kostyuk" "age" 30
+                                                           "children" (list (plist->hash "givenName" "Natalia" "age" 5)
+                                                                            (plist->hash "givenName" "Aida" "age" 17))
+                                                           "address" (plist->hash "city" "Kiev" "street" "Krasnoarmeyskaya" "house" 1)))))
+    (set-geometry obj :width 600 :height 600)
+    obj))
+#+END_SRC
 * Test
 ** main page
 #+BEGIN_SRC lisp
@@ -242,20 +325,21 @@ clog['codemirror'][~s] = new CodeMirror.EditorView({
   (let* ((row1    (create-web-auto-row    body))
          (column1 (create-web-auto-column row1 :class "w3-margin"))
          (column2 (create-web-auto-column row1 :class "w3-margin"))
+         (column3 (create-web-auto-column row1 :class "w3-margin"))
          (row2    (create-web-auto-row    body))
          (demo1 (create-button column1 :content "Cytoscape-Demo1"))
-         (demo2 (create-button column2 :content "CodeMirror-Demo1")))
+         (demo2 (create-button column2 :content "CodeMirror-Demo1"))
+         (demo3 (create-button column3 :content "json-view-Demo1")))
     (center-children row1)
-    (set-on-click demo1 (lambda (obj)
-                          (declare (ignore obj))
-                          (setf (inner-html row2) "")
-                          (cytoscape-demo1 row2)
-                          (center-children row2)))
-    (set-on-click demo2 (lambda (obj)
-                          (declare (ignore obj))
-                          (setf (inner-html row2) "")
-                          (codemirror-demo1 row2)
-                          (center-children row2)))))
+    (labels ((%set-on-click (button callback)
+               (set-on-click button (lambda (obj)
+                                      (declare (ignore obj))
+                                      (setf (inner-html row2) "")
+                                      (funcall callback row2)
+                                      (center-children row2)))))
+      (%set-on-click demo1 'cytoscape-demo1)
+      (%set-on-click demo2 'codemirror-demo1)
+      (%set-on-click demo3 'jsonview-demo1))))
 #+END_SRC
 ** entry point for demo page
 #+BEGIN_SRC lisp

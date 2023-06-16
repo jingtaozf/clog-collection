@@ -2,6 +2,11 @@ import $ from 'jquery';
 window.jQuery = $;
 window.$ = $;
 
+import * as bootstrap from 'bootstrap';
+import 'bootstrap/dist/css/bootstrap.css';
+window.bootstrap = bootstrap;
+
+
 import cytoscape from 'cytoscape';
 window.cytoscape = cytoscape;
 
@@ -17,3 +22,6 @@ window.CodeMirror.javascript = javascript;
 import {EditorState, Compartment} from "@codemirror/state"
 window.CodeMirror.EditorState = EditorState;
 window.CodeMirror.Compartment = Compartment;
+
+import jsonview from '@pgrabovets/json-view';
+window.jsonview = jsonview;
