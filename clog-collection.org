@@ -15,11 +15,14 @@
   - [[#a-new-package][a new package]]
   - [[#switch-to-this-package][switch to this package]]
 - [[#utilities][Utilities]]
+  - [[#the-generic-method-to-get-the-js-id--for-a-js-object-of-a-clog-element][the generic method to get the js id  for a js object of a clog element]]
   - [[#create-hash-table-from-plist][create hash table from plist]]
   - [[#encode-associated-list-into-json-string][encode associated list into json string]]
 - [[#cytoscape][cytoscape]]
   - [[#definition][definition]]
   - [[#how-to-create-it][how to create it]]
+    - [[#generic-method][generic method]]
+    - [[#implementation][implementation]]
   - [[#demo][Demo]]
     - [[#demo-1][demo 1]]
 - [[#codemirror][codemirror]]
@@ -29,7 +32,6 @@
     - [[#lisp][lisp]]
   - [[#text-value][text-value]]
   - [[#setf-text-value][setf text-value]]
-  - [[#remove-local-instance-in-js-side-when-destroy][remove local instance in js side when destroy]]
   - [[#demo-2][Demo]]
     - [[#demo-1-1][demo 1]]
 - [[#jsonview][jsonview]]
@@ -64,6 +66,7 @@ Let's create an individual package for this module.
   (:use :cl :alexandria :iterate :clog :clog-gui #:clog-web)
   (:shadowing-import-from #:clog #:rotate #:escape-string #:multiply)
   (:export
+   #:js-id
    #:create-clog-cytoscape
    #:create-clog-codemirror
    #:create-clog-jsonview)
@@ -74,6 +77,14 @@ Let's create an individual package for this module.
 (in-package :clog-collection)
 #+END_SRC
 * Utilities
+** the generic method to get the js id  for a js object of a clog element
+#+BEGIN_SRC lisp
+(defgeneric js-id (clog-element)
+  (:documentation "Access to javascript object (private)")
+  (:method (clog-element)
+    (format nil "clog['js_~A']" (html-id clog-element))))
+#+END_SRC
+
 ** create hash table from plist
 #+BEGIN_SRC lisp
 (defun plist->hash (&rest args)
@@ -97,6 +108,7 @@ Let's create an individual package for this module.
   (:documentation "clog-cytoscape Object."))
 #+END_SRC
 ** how to create it
+*** generic method
 #+BEGIN_SRC lisp
 (defgeneric create-clog-cytoscape (obj &key
                                          elements style layout
@@ -106,7 +118,9 @@ Let's create an individual package for this module.
                                          load-js
                                          auto-place)
   (:documentation "Create a new clog-cytoscape object in lisp."))
-
+#+END_SRC
+*** implementation
+#+BEGIN_SRC lisp
 (defmethod create-clog-cytoscape ((obj clog:clog-obj)
                                   &key
                                     elements style layout
@@ -128,11 +142,12 @@ Let's create an individual package for this module.
     (setf (cytoscape-elements obj) elements
         (cytoscape-style obj) style
         (cytoscape-layout obj) layout)
-    (js-execute obj (format nil "cytoscape({ container: document.getElementById('~a'),
+    (js-execute obj (format nil "~A = cytoscape({ container: document.getElementById('~A'),
         elements: ~a,
         style: ~a,
         layout: ~a
 });"
+                            (js-id obj)
                             (html-id obj)
                             (->json elements)
                             (->json style)
@@ -184,13 +199,15 @@ let state = CodeMirror.EditorState.create({
     ]
 });
 clog['codemirror']  = clog['codemirror'] || {};
-clog['codemirror'][~s] = new CodeMirror.EditorView({
+~A = new CodeMirror.EditorView({
     state,
     parent: document.getElementById(~s)
 });
 #+END_SRC
 
 *** lisp
+
+**** generic method
 #+BEGIN_SRC lisp
 (defgeneric create-clog-codemirror (obj &key
                                           tab-size
@@ -200,7 +217,9 @@ clog['codemirror'][~s] = new CodeMirror.EditorView({
                                           html-id
                                           auto-place)
   (:documentation "Create a new clog-codemirror object in lisp."))
-
+#+END_SRC
+**** implementation
+#+BEGIN_SRC lisp
 (defmethod create-clog-codemirror ((obj clog:clog-obj)
                                    &key
                                      (tab-size 8)
@@ -216,31 +235,21 @@ clog['codemirror'][~s] = new CodeMirror.EditorView({
                              :html-id html-id
                              :auto-place auto-place)))
     (change-class obj 'clog-codemirror)
-    (js-execute obj (format nil clog.js.codemirror.new tab-size extentions (html-id obj) (html-id obj)))
+    (js-execute obj (format nil clog.js.codemirror.new tab-size extentions (js-id obj) (html-id obj)))
     obj))
 #+END_SRC
-
 ** text-value
 #+BEGIN_SRC lisp
 (defmethod text-value ((obj clog-codemirror))
-  (js-query obj (format nil "clog['codemirror'][~s].viewState.state.doc.toString()"
-                        (html-id obj))))
+  (js-query obj (format nil "~A.viewState.state.doc.toString()"
+                        (js-id obj))))
 #+END_SRC
-
 ** setf text-value
 #+BEGIN_SRC lisp
 (defmethod (setf text-value) (value (obj clog-codemirror))
-  (js-execute obj (format nil "clog['codemirror'][~s].dispatch({ changes: {from: 0, to: clog['codemirror'][~s].viewState.state.doc.length, insert: ~s}}); "
-                          (html-id obj) (html-id obj) value)))
+  (js-execute obj (format nil "~A.dispatch({ changes: {from: 0, to: ~A.viewState.state.doc.length, insert: ~s}}); "
+                          (js-id obj) (js-id obj) value)))
 #+END_SRC
-
-** remove local instance in js side when destroy
-#+BEGIN_SRC lisp
-(defmethod remove-from-dom :after ((obj clog-codemirror))
-  (js-execute obj (format nil "delete clog['codemirror'][~s];"
-                                (html-id obj))))
-#+END_SRC
-
 ** Demo
 *** demo 1
 #+BEGIN_SRC lisp
@@ -279,19 +288,24 @@ clog['jsonview'][~s] = new Jsonview.EditorView({
 #+END_SRC
 
 *** lisp
+**** generic method
 #+BEGIN_SRC lisp
 (defgeneric create-clog-jsonview (obj &key
                                         ;; Can be either a string or a json object.
                                         json
+                                        expand
                                         hidden
                                         class
                                         html-id
                                         auto-place)
   (:documentation "Create a new clog-jsonview object in lisp."))
-
+#+END_SRC
+**** implementation
+#+BEGIN_SRC lisp
 (defmethod create-clog-jsonview ((obj clog:clog-obj)
                                  &key
                                    json
+                                   expand
                                    (hidden nil)
                                    (class nil)
                                    (html-id (symbol-name (gensym "jsonview")))
@@ -301,13 +315,21 @@ clog['jsonview'][~s] = new Jsonview.EditorView({
                          :class class
                          :hidden hidden
                          :html-id html-id
-                         :auto-place auto-place)))
-    (change-class obj 'clog-jsonview)
-    (js-execute obj (format nil "jsonview.render(jsonview.create(~s), document.getElementById('~a'));"
-                            (if (stringp json)
+                         :auto-place auto-place))
+        (json-string (if (stringp json)
                                 json
-                                (->json json))
-                            (html-id obj)))
+                                (->json json))))
+    (change-class obj 'clog-jsonview)
+
+    (js-execute obj (format nil "~A = jsonview.create(~s); jsonview.render(~A, document.getElementById('~a'));if (~A) jsonview.expand(~A)"
+                            (js-id obj)
+                            json-string
+                            (js-id obj)
+                            (html-id obj)
+                            (if expand
+                                "true"
+                                "false")
+                            (js-id obj)))
     obj))
 #+END_SRC
 
@@ -318,7 +340,8 @@ clog['jsonview'][~s] = new Jsonview.EditorView({
   (let* ((obj (create-clog-jsonview row :json (plist->hash "givenName" "Vas" "familyName" "Kostyuk" "age" 30
                                                            "children" (list (plist->hash "givenName" "Natalia" "age" 5)
                                                                             (plist->hash "givenName" "Aida" "age" 17))
-                                                           "address" (plist->hash "city" "Kiev" "street" "Krasnoarmeyskaya" "house" 1)))))
+                                                           "address" (plist->hash "city" "Kiev" "street" "Krasnoarmeyskaya" "house" 1))
+                                    :expand t)))
     (set-geometry obj :width 600 :height 600)
     obj))
 #+END_SRC
