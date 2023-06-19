@@ -15,9 +15,13 @@
   - [[#a-new-package][a new package]]
   - [[#switch-to-this-package][switch to this package]]
 - [[#utilities][Utilities]]
-  - [[#the-generic-method-to-get-the-js-id--for-a-js-object-of-a-clog-element][the generic method to get the js id  for a js object of a clog element]]
+  - [[#the-generic-method-to-get-the-js-id--for-an-object-created-by-javascript][the generic method to get the js id  for an object created by javascript]]
+  - [[#the-generic-method-to-set-the-event--for-an-object-created-by-javascript][the generic method to set the event  for an object created by javascript]]
   - [[#create-hash-table-from-plist][create hash table from plist]]
   - [[#encode-associated-list-into-json-string][encode associated list into json string]]
+  - [[#keymap-handler][keymap handler]]
+    - [[#data-structure][data structure]]
+    - [[#keymap-event-for-a-key][keymap event for a key]]
 - [[#cytoscape][cytoscape]]
   - [[#definition][definition]]
   - [[#how-to-create-it][how to create it]]
@@ -29,16 +33,18 @@
   - [[#definition-1][definition]]
   - [[#how-to-create-it-1][how to create it]]
     - [[#js][js]]
-    - [[#lisp][lisp]]
-  - [[#text-value][text-value]]
-  - [[#setf-text-value][setf text-value]]
+    - [[#create-clog-codemirror][create-clog-codemirror]]
+  - [[#text-value][text value]]
+    - [[#get][get]]
+    - [[#setf][setf]]
+  - [[#keymap][keymap]]
   - [[#demo-2][Demo]]
     - [[#demo-1-1][demo 1]]
 - [[#jsonview][jsonview]]
   - [[#definition-2][definition]]
   - [[#how-to-create-it-2][how to create it]]
     - [[#js-1][js]]
-    - [[#lisp-1][lisp]]
+    - [[#lisp][lisp]]
   - [[#demo-3][Demo]]
     - [[#demo-1-2][demo 1]]
 - [[#test][Test]]
@@ -67,6 +73,10 @@ Let's create an individual package for this module.
   (:shadowing-import-from #:clog #:rotate #:escape-string #:multiply)
   (:export
    #:js-id
+   #:make-keymap
+   #:keymap-key
+   #:keymap-event
+   #:keymap-handler
    #:create-clog-cytoscape
    #:create-clog-codemirror
    #:create-clog-jsonview)
@@ -77,12 +87,27 @@ Let's create an individual package for this module.
 (in-package :clog-collection)
 #+END_SRC
 * Utilities
-** the generic method to get the js id  for a js object of a clog element
+** the generic method to get the js id  for an object created by javascript
 #+BEGIN_SRC lisp
 (defgeneric js-id (clog-element)
   (:documentation "Access to javascript object (private)")
   (:method (clog-element)
     (format nil "clog['js_~A']" (html-id clog-element))))
+#+END_SRC
+** the generic method to set the event  for an object created by javascript
+#+BEGIN_SRC lisp
+(defgeneric set-js-event (obj event handler)
+  (:method (obj event handler)
+    (set-on-event obj (format nil "~(~a~)-~A" (type-of obj) event) handler)
+    (if handler
+        (js-execute obj (format nil "~A.on('~A', function()~
+                                  {~A.trigger('~(~a~)-~A')})"
+                                (js-id obj)
+                                event
+                                (jquery obj)
+                                (type-of obj)
+                                event))
+        (js-execute obj (format nil "~A.off('~A')" (js-id obj) event)))))
 #+END_SRC
 
 ** create hash table from plist
@@ -96,6 +121,25 @@ Let's create an individual package for this module.
 (defun ->json (obj)
   (with-output-to-string (stream)
     (yason:encode obj stream)))
+#+END_SRC
+
+** keymap handler
+*** data structure
+#+BEGIN_SRC lisp
+(defstruct keymap
+  ;; the key name, for example `Shift-Enter'
+  (key (required-argument "key") :type string)
+  ;; a handler in lisp side for the above key.
+  (handler (required-argument "handler") :type function)
+  ;; the return value in js side, to determine whether or not the default browser behaviour should take place as well. 
+  (return-value nil :type boolean))
+#+END_SRC
+*** keymap event for a key
+#+BEGIN_SRC lisp
+(defgeneric keymap-event (keymap)
+  (:documentation "keymap event name")
+  (:method (keymap)
+    (format nil "keymap-~a" (keymap-key keymap))))
 #+END_SRC
 
 * cytoscape
@@ -112,6 +156,7 @@ Let's create an individual package for this module.
 #+BEGIN_SRC lisp
 (defgeneric create-clog-cytoscape (obj &key
                                          elements style layout
+                                         width height
                                          hidden
                                          class
                                          html-id
@@ -124,6 +169,7 @@ Let's create an individual package for this module.
 (defmethod create-clog-cytoscape ((obj clog:clog-obj)
                                   &key
                                     elements style layout
+                                    width height
                                     (hidden nil)
                                     (class nil)
                                     (html-id (symbol-name (gensym "cytoscape")))
@@ -131,17 +177,20 @@ Let's create an individual package for this module.
                                     (auto-place t))
   "Create control - used at design time and in code"
   (let ((obj (create-div obj
-                             :class class
-                             :hidden hidden
-                             :html-id html-id
-                             :auto-place auto-place)))
+                         :class class
+                         :hidden hidden
+                         :html-id html-id
+                         :auto-place auto-place)))
     (change-class obj 'clog-cytoscape)
     (when load-js
       (load-script (html-document (connection-data-item obj "clog-body"))
                    "https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.25.0/cytoscape.min.js"))
     (setf (cytoscape-elements obj) elements
-        (cytoscape-style obj) style
-        (cytoscape-layout obj) layout)
+          (cytoscape-style obj) style
+          (cytoscape-layout obj) layout)
+    (when (or width height)
+      (set-geometry obj :width width :height height))
+
     (js-execute obj (format nil "~A = cytoscape({ container: document.getElementById('~A'),
         elements: ~a,
         style: ~a,
@@ -171,8 +220,7 @@ Let's create an individual package for this module.
                                                         "target-arrow-shape" "triangle"
                                                         "curve-style" "bezier"))))
          (layout (plist->hash "name" "grid" "rows" 1))
-         (obj (create-clog-cytoscape row :elements elements :style style :layout layout :load-js nil)))
-    (set-geometry obj :width 600 :height 600)
+         (obj (create-clog-cytoscape row :width 600 :height 600 :elements elements :style style :layout layout :load-js nil)))
     obj))
 #+END_SRC
 
@@ -203,14 +251,15 @@ clog['codemirror']  = clog['codemirror'] || {};
     state,
     parent: document.getElementById(~s)
 });
+~A.viewState.clog = '~A';
 #+END_SRC
 
-*** lisp
-
+*** create-clog-codemirror
 **** generic method
 #+BEGIN_SRC lisp
 (defgeneric create-clog-codemirror (obj &key
                                           tab-size
+                                          keymaps
                                           extentions
                                           hidden
                                           class
@@ -223,39 +272,70 @@ clog['codemirror']  = clog['codemirror'] || {};
 (defmethod create-clog-codemirror ((obj clog:clog-obj)
                                    &key
                                      (tab-size 8)
+                                   ;; a list of keymap for code mirror
+                                     keymaps
                                      extentions
                                      (hidden nil)
                                      (class nil)
                                      (html-id (symbol-name (gensym "codemirror")))
                                      (auto-place t))
   "Create control - used at design time and in code"
-  (let ((obj (create-div obj
-                             :class class
-                             :hidden hidden
-                             :html-id html-id
-                             :auto-place auto-place)))
+  (let* ((obj (create-div obj
+                          :class class
+                          :hidden hidden
+                          :html-id html-id
+                          :auto-place auto-place))
+         (keymap-js-code (with-output-to-string (*standard-output*)
+                           (when keymaps
+                             (write-string "CodeMirror.keymap.of([")
+                             (iter (for keymap in keymaps)
+                               (format t "{key: '~a', run: (view) => {~a.trigger('~a'); return ~a}}"
+                                       (keymap-key keymap)
+                                       (jquery obj)
+                                       (keymap-event keymap)
+                                       (if (keymap-return-value keymap)
+                                           "true"
+                                           "false"))
+                               (unless (first-iteration-p)
+                                 (format t ",~%")))
+                             (write-string "])"))))
+         (extentions (format nil "~@[~a, ~]~a" extentions keymap-js-code)))
     (change-class obj 'clog-codemirror)
-    (js-execute obj (format nil clog.js.codemirror.new tab-size extentions (js-id obj) (html-id obj)))
+    (js-execute obj (format nil clog.js.codemirror.new
+                            tab-size extentions
+                            (js-id obj)
+                            (html-id obj)
+                            (js-id obj)
+                            (html-id obj)))
+    (iter (for keymap in keymaps)
+      (set-on-event obj (keymap-event keymap) (keymap-handler keymap)))
     obj))
 #+END_SRC
-** text-value
+** text value
+*** get
 #+BEGIN_SRC lisp
 (defmethod text-value ((obj clog-codemirror))
   (js-query obj (format nil "~A.viewState.state.doc.toString()"
                         (js-id obj))))
 #+END_SRC
-** setf text-value
+*** setf
 #+BEGIN_SRC lisp
 (defmethod (setf text-value) (value (obj clog-codemirror))
   (js-execute obj (format nil "~A.dispatch({ changes: {from: 0, to: ~A.viewState.state.doc.length, insert: ~s}}); "
                           (js-id obj) (js-id obj) value)))
 #+END_SRC
+** keymap
 ** Demo
 *** demo 1
 #+BEGIN_SRC lisp
 (defun codemirror-demo1 (row)
-  (let* ((obj (create-clog-codemirror row :extentions "language.of(CodeMirror.javascript.javascript()),
-")))
+  (let* ((obj (create-clog-codemirror row :extentions "language.of(CodeMirror.javascript.javascript())"
+                                          :keymaps (list (make-keymap :key "Shift-Enter"
+                                                                      :return-value t
+                                                                      :handler #'(lambda (obj)
+                                                                                   (clog-web-alert obj "Alert"
+                                                                                                   (format nil  "~a: Shift-Enter" (html-id obj))
+                                                                                                   :time-out 3)))))))
     (set-geometry obj :width 600 :height 600)
     obj))
 #+END_SRC
@@ -377,6 +457,7 @@ clog['jsonview'][~s] = new Jsonview.EditorView({
 ** start test
 #+BEGIN_SRC lisp
 (defun start-test ()
+  #+dev(setf clog-connection:*verbose-output* t)
   (initialize 'on-new-demo-window
               :host "127.0.0.1"
               :port 8090

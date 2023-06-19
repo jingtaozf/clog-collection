@@ -19,7 +19,10 @@ window.CodeMirror = Object.assign({}, CodeMirror);
 import * as javascript from "@codemirror/lang-javascript";
 window.CodeMirror.javascript = javascript;
 
+import { keymap } from '@codemirror/view';
 import {EditorState, Compartment} from "@codemirror/state"
+
+window.CodeMirror.keymap = keymap;
 window.CodeMirror.EditorState = EditorState;
 window.CodeMirror.Compartment = Compartment;
 
