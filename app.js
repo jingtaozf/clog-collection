@@ -26,5 +26,8 @@ window.CodeMirror.keymap = keymap;
 window.CodeMirror.EditorState = EditorState;
 window.CodeMirror.Compartment = Compartment;
 
+import { autocompletion } from '@codemirror/autocomplete';
+window.CodeMirror.autocompletion = autocompletion;
+
 import jsonview from '@pgrabovets/json-view';
 window.jsonview = jsonview;

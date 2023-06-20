@@ -246,20 +246,41 @@ let state = CodeMirror.EditorState.create({
 	~@[,~a~]
     ]
 });
-clog['codemirror']  = clog['codemirror'] || {};
+
+function resolve_Clog_CodeMirror_AutoComplete (resolve) {
+    setTimeout(() => {
+	if (clog['clog-codemirror-auto-complete-result'])
+	    resolve('resolved');
+	else
+	    resolve_Clog_CodeMirror_AutoComplete(resolve);
+    }, 10);
+};
+
+async function code_mirror_Completions(context) {
+    let word = context.matchBefore(/\w*/);
+    data = {'word': {'from': word.from, 'to': word.to},
+	    'text': ~A.viewState.state.doc.toString(),
+	    explicit: context.explicit,
+	    pos: context.pos};
+    clog['clog-codemirror-auto-complete-result'] = null;
+    ~A.trigger('clog-codemirror-auto-complete', JSON.stringify(data)); 
+    await new Promise(resolve_Clog_CodeMirror_AutoComplete);
+    return JSON.parse(clog['clog-codemirror-auto-complete-result']);
+};
+
 ~A = new CodeMirror.EditorView({
     state,
     parent: document.getElementById(~s)
 });
 ~A.viewState.clog = '~A';
 #+END_SRC
-
 *** create-clog-codemirror
 **** generic method
 #+BEGIN_SRC lisp
 (defgeneric create-clog-codemirror (obj &key
                                           tab-size
                                           keymaps
+                                          auto-completion
                                           extentions
                                           hidden
                                           class
@@ -274,6 +295,7 @@ clog['codemirror']  = clog['codemirror'] || {};
                                      (tab-size 8)
                                    ;; a list of keymap for code mirror
                                      keymaps
+                                     auto-completion
                                      extentions
                                      (hidden nil)
                                      (class nil)
@@ -299,14 +321,24 @@ clog['codemirror']  = clog['codemirror'] || {};
                                (unless (first-iteration-p)
                                  (format t ",~%")))
                              (write-string "])"))))
-         (extentions (format nil "~@[~a, ~]~a" extentions keymap-js-code)))
+         (auto-completion-js-code (when auto-completion
+                                    "CodeMirror.autocompletion({override: [code_mirror_Completions]})"))
+         (extentions (format nil "~@[~a, ~]~@[~a, ~]~a" extentions auto-completion-js-code keymap-js-code)))
     (change-class obj 'clog-codemirror)
     (js-execute obj (format nil clog.js.codemirror.new
                             tab-size extentions
                             (js-id obj)
+                            (jquery obj)
+                            (js-id obj)
                             (html-id obj)
                             (js-id obj)
                             (html-id obj)))
+    (when auto-completion
+      (set-on-event-with-data
+       obj "clog-codemirror-auto-complete"
+       (lambda (obj data)
+         (js-execute obj (format nil "clog['clog-codemirror-auto-complete-result'] = ~s"
+                                 (->json (funcall auto-completion (yason:parse data))))))))
     (iter (for keymap in keymaps)
       (set-on-event obj (keymap-event keymap) (keymap-handler keymap)))
     obj))
@@ -327,15 +359,36 @@ clog['codemirror']  = clog['codemirror'] || {};
 ** keymap
 ** Demo
 *** demo 1
+**** auto completion
+#+BEGIN_SRC lisp
+(defun codemirror-demo1-auto-completion (json)
+  (let* ((word (gethash "word" json))
+         (from (gethash "from" word))
+         (to (gethash "to" word))
+         (explicit (gethash "explicit" json)))
+    (if (and (eql from to)
+             (not explicit))
+        nil
+        (plist->hash
+         "from" from
+         "options" (list (plist->hash "label" "match" "type" "keyword")
+                         (plist->hash "label" "hello" "type" "variable" "info" "(World)")
+                         (plist->hash "label" "magic" "type" "text"
+                                      "apply" "⠁⭒*.✩.*⭒⠁" "detail" "macro"))))))
+#+END_SRC
+
+**** main
 #+BEGIN_SRC lisp
 (defun codemirror-demo1 (row)
-  (let* ((obj (create-clog-codemirror row :extentions "language.of(CodeMirror.javascript.javascript())"
-                                          :keymaps (list (make-keymap :key "Shift-Enter"
-                                                                      :return-value t
-                                                                      :handler #'(lambda (obj)
-                                                                                   (clog-web-alert obj "Alert"
-                                                                                                   (format nil  "~a: Shift-Enter" (html-id obj))
-                                                                                                   :time-out 3)))))))
+  (let* ((obj (create-clog-codemirror row
+                                      :extentions "language.of(CodeMirror.javascript.javascript())"
+                                      :auto-completion 'codemirror-demo1-auto-completion
+                                      :keymaps (list (make-keymap :key "Shift-Enter"
+                                                                  :return-value t
+                                                                  :handler #'(lambda (obj)
+                                                                               (clog-web-alert obj "Alert"
+                                                                                               (format nil  "~a: Shift-Enter" (html-id obj))
+                                                                                               :time-out 3)))))))
     (set-geometry obj :width 600 :height 600)
     obj))
 #+END_SRC
@@ -429,7 +482,7 @@ clog['jsonview'][~s] = new Jsonview.EditorView({
 ** main page
 #+BEGIN_SRC lisp
 (defun demo-page (body)
-  #+dev(debug-mode body)
+  (debug-mode body)
   (let* ((row1    (create-web-auto-row    body))
          (column1 (create-web-auto-column row1 :class "w3-margin"))
          (column2 (create-web-auto-column row1 :class "w3-margin"))
