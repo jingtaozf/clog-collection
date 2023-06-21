@@ -27,6 +27,10 @@
   - [[#how-to-create-it][how to create it]]
     - [[#generic-method][generic method]]
     - [[#implementation][implementation]]
+  - [[#bind-a-event][bind a event]]
+    - [[#how][how]]
+    - [[#bind][bind]]
+    - [[#unbind][unbind]]
   - [[#demo][Demo]]
     - [[#demo-1][demo 1]]
 - [[#codemirror][codemirror]]
@@ -69,7 +73,8 @@ In dev environment, we will disable possible optimization.
 Let's create an individual package for this module.
 #+BEGIN_SRC lisp
 (defpackage #:clog-collection
-  (:use :cl :alexandria :iterate :clog :clog-gui #:clog-web)
+  (:use :cl :alexandria :iterate :clog :clog-gui #:clog-web :cl-ppcre)
+  (:import-from :clog #:bind-event-script #:unbind-event-script)
   (:shadowing-import-from #:clog #:rotate #:escape-string #:multiply)
   (:export
    #:js-id
@@ -160,7 +165,6 @@ Let's create an individual package for this module.
                                          hidden
                                          class
                                          html-id
-                                         load-js
                                          auto-place)
   (:documentation "Create a new clog-cytoscape object in lisp."))
 #+END_SRC
@@ -173,7 +177,6 @@ Let's create an individual package for this module.
                                     (hidden nil)
                                     (class nil)
                                     (html-id (symbol-name (gensym "cytoscape")))
-                                    (load-js t)
                                     (auto-place t))
   "Create control - used at design time and in code"
   (let ((obj (create-div obj
@@ -182,9 +185,6 @@ Let's create an individual package for this module.
                          :html-id html-id
                          :auto-place auto-place)))
     (change-class obj 'clog-cytoscape)
-    (when load-js
-      (load-script (html-document (connection-data-item obj "clog-body"))
-                   "https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.25.0/cytoscape.min.js"))
     (setf (cytoscape-elements obj) elements
           (cytoscape-style obj) style
           (cytoscape-layout obj) layout)
@@ -203,24 +203,79 @@ Let's create an individual package for this module.
                             (->json layout)))
     obj))
 #+END_SRC
+** bind a event
+*** how
+https://js.cytoscape.org/#cy.on
+
+#+BEGIN_QUOTE
+cy.on( events [, selector], function(event) )
+events A space separated list of event names.
+selector [optional] A selector to specify elements for which the handler runs.
+function(event) The handler function that is called when one of the specified events occurs.
+event The event object.
+#+END_QUOTE
+
+Based on the provided document,
+a new syntax can be created by using "=event=" to encompass both events and selectors.
+This can be achieved by combining them with the first dot character present in the "=event=".
+
+For example, when a =tap= event occurs on a =node=, the resulting event name will be =tap.node=.
+*** bind
+#+BEGIN_SRC lisp
+(defmethod bind-event-script ((obj clog-cytoscape) event-data call-back)
+  (let* ((event-info (split "\\." event-data :limit 2))
+         (events (first event-info))
+         (selector (second event-info)))
+    (js-execute obj (format nil "~A.on(~S,~@[ ~S,~] function (e){
+clog['cytoscape-event'] = e;
+id = e.target.id();
+data = JSON.stringify({'id': id, 'type': e.type, 'namespace': e.namespace}); ~A})"
+                            (js-id obj) events selector call-back))))
+#+END_SRC
+*** unbind
+https://js.cytoscape.org/#cy.removeListener
+
+The event has the same data format as =bind-event-script=.
+#+BEGIN_SRC lisp
+(defmethod unbind-event-script ((obj clog-cytoscape) event-data)
+  (let* ((event-info (split "\\." event-data :limit 2))
+         (events (first event-info))
+         (selector (second event-info)))
+  (js-execute obj (format nil "~A.removeListener(~S~@[, ~S~])"
+                          (js-id obj) events selector))))
+
+#+END_SRC
+
 ** Demo
 *** demo 1
 #+BEGIN_SRC lisp
 (defun cytoscape-demo1 (row)
-  (let* ((elements (list (plist->hash "data" (plist->hash "id" "a"))
-                         (plist->hash "data" (plist->hash "id" "b"))
-                         (plist->hash "data" (plist->hash "id" "ab" "source" "a" "target" "b"))))
+  (let* ((elements (list (plist->hash "data" (plist->hash "id" "a" "color" "red"))
+                         (plist->hash "data" (plist->hash "id" "b" "color" "green"))
+                         (plist->hash "data" (plist->hash "id" "ab" "source" "a" "target" "b"
+                                                            "color" "blue")
+                                      )))
          (style (list (plist->hash "selector" "node"
-                                   "style" (plist->hash "background-color" "#666"
+                                   "style" (plist->hash "background-color" "data(color)"
+                                                        "color" "data(color)"
                                                         "label" "data(id)"))
                       (plist->hash "selector" "edge"
                                    "style" (plist->hash "width" 3
-                                                        "line-color" "#ccc"
+                                                        "line-color" "data(color)"
                                                         "target-arrow-color" "#ccc"
                                                         "target-arrow-shape" "triangle"
+                                                        "label" "data(id)"
+                                                        "color" "data(color)"
                                                         "curve-style" "bezier"))))
          (layout (plist->hash "name" "grid" "rows" 1))
-         (obj (create-clog-cytoscape row :width 600 :height 600 :elements elements :style style :layout layout :load-js nil)))
+         (obj (create-clog-cytoscape row :width 600 :height 600 :elements elements :style style :layout layout)))
+    (set-on-event-with-data obj "tap.node" (lambda (obj data)
+                                             (let ((event (yason:parse data)))
+                                               (clog-web-alert obj "tap.node" (format nil "id:~a" (gethash "id" event)) :time-out 3))))
+
+    (set-on-event-with-data obj "tap.edge" (lambda (obj data)
+                                             (let ((event (yason:parse data)))
+                                               (clog-web-alert obj "tap.edge" (format nil "id:~a" (gethash "id" event)) :time-out 3))))
     obj))
 #+END_SRC
 
