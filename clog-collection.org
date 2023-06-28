@@ -408,7 +408,8 @@ async function code_mirror_Completions(context) {
 *** setf
 #+BEGIN_SRC lisp
 (defmethod (setf text-value) (value (obj clog-codemirror))
-  (js-execute obj (format nil "~A.dispatch({ changes: {from: 0, to: ~A.viewState.state.doc.length, insert: ~s}}); "
+  ;;  use backticks (`) instead of single or double quotes and include line breaks directly within the string.
+  (js-execute obj (format nil "~A.dispatch({ changes: {from: 0, to: ~A.viewState.state.doc.length, insert: `~a`}}); "
                           (js-id obj) (js-id obj) value)))
 #+END_SRC
 ** keymap
