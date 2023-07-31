@@ -4,8 +4,8 @@
 ;; Description: A set of CLOG Plugins
 ;; Author: Jingtao Xu <jingtaozf@gmail.com>
 ;; Created: 2023.05.31 21:27:16(+0800)
-;; Last-Updated: 2023.06.21 11:46:04(+0800)
-;;     Update #: 23
+;; Last-Updated: 2023.07.31 15:28:31(+0800)
+;;     Update #: 24
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;;; Commentary:
@@ -21,7 +21,7 @@
 (asdf:defsystem clog-collection
   :author "Xu Jingtao <jingtaozf@gmail.com>"
   :version "0.1"
-  :licence "Private"
+  :licence "MIT"
   :serial t
   :description "A set of CLOG Plugins"
   :defsystem-depends-on (:literate-lisp)
