@@ -21,10 +21,13 @@ window.CodeMirror.javascript = javascript;
 
 import { keymap } from '@codemirror/view';
 import {EditorState, Compartment} from "@codemirror/state"
+import { EditorView, ViewUpdate } from "@codemirror/view"
 
 window.CodeMirror.keymap = keymap;
 window.CodeMirror.EditorState = EditorState;
 window.CodeMirror.Compartment = Compartment;
+window.CodeMirror.EditorState = EditorState;
+window.CodeMirror.ViewUpdate = ViewUpdate;
 
 import { autocompletion } from '@codemirror/autocomplete';
 window.CodeMirror.autocompletion = autocompletion;

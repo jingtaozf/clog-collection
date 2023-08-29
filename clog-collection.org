@@ -51,6 +51,7 @@
     - [[#lisp][lisp]]
   - [[#demo-3][Demo]]
     - [[#demo-1-2][demo 1]]
+  - [[#term][term]]
 - [[#test][Test]]
   - [[#main-page][main page]]
   - [[#entry-point-for-demo-page][entry point for demo page]]
@@ -450,6 +451,7 @@ async function code_mirror_Completions(context) {
 #+END_SRC
 * jsonview
 ** definition
+https://github.com/pgrabovets/json-view
 #+BEGIN_SRC lisp
 (defclass clog-jsonview (clog-element)
   ((language :initarg :language :accessor cytoscape-language))
@@ -534,6 +536,7 @@ clog['jsonview'][~s] = new Jsonview.EditorView({
     (set-geometry obj :width 600 :height 600)
     obj))
 #+END_SRC
+** term
 * Test
 ** main page
 #+BEGIN_SRC lisp
