@@ -411,7 +411,8 @@ async function code_mirror_Completions(context) {
 (defmethod (setf text-value) (value (obj clog-codemirror))
   ;;  use backticks (`) instead of single or double quotes and include line breaks directly within the string.
   (js-execute obj (format nil "~A.dispatch({ changes: {from: 0, to: ~A.viewState.state.doc.length, insert: `~a`}}); "
-                          (js-id obj) (js-id obj) value)))
+                          (js-id obj) (js-id obj)
+                          (ppcre:regex-replace-all "`"  value "\\\\`"))))
 #+END_SRC
 ** keymap
 ** Demo
