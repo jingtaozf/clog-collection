@@ -365,18 +365,23 @@ async function code_mirror_Completions(context) {
                           :auto-place auto-place))
          (keymap-js-code (with-output-to-string (*standard-output*)
                            (when keymaps
-                             (write-string "CodeMirror.keymap.of([")
-                             (iter (for keymap in keymaps)
-                               (format t "{key: '~a', run: (view) => {~a.trigger('~a'); return ~a}}"
-                                       (keymap-key keymap)
-                                       (jquery obj)
-                                       (keymap-event keymap)
-                                       (if (keymap-return-value keymap)
-                                           "true"
-                                           "false"))
-                               (unless (first-iteration-p)
-                                 (format t ",~%")))
-                             (write-string "])"))))
+                             (write-string "CodeMirror.keymap.of(")
+                             (if (stringp keymaps)
+                                 (write-string keymaps)
+                                 (iter
+                                   (initially (write-char #\[))
+                                   (for keymap in keymaps)
+                                   (format t "{key: '~a', run: (view) => {~a.trigger('~a'); return ~a}}"
+                                           (keymap-key keymap)
+                                           (jquery obj)
+                                           (keymap-event keymap)
+                                           (if (keymap-return-value keymap)
+                                               "true"
+                                               "false"))
+                                   (unless (first-iteration-p)
+                                     (format t ",~%"))
+                                   (finally (write-char #\]))))
+                             (write-string ")"))))
          (auto-completion-js-code (when auto-completion
                                     "CodeMirror.autocompletion({override: [code_mirror_Completions]})"))
          (extentions (format nil "~@[~a, ~]~@[~a, ~]~a" extentions auto-completion-js-code keymap-js-code)))
@@ -395,8 +400,9 @@ async function code_mirror_Completions(context) {
        (lambda (obj data)
          (js-execute obj (format nil "clog['clog-codemirror-auto-complete-result'] = ~s"
                                  (->json (funcall auto-completion (yason:parse data))))))))
-    (iter (for keymap in keymaps)
-      (set-on-event obj (keymap-event keymap) (keymap-handler keymap)))
+    (when (listp keymaps)
+      (iter (for keymap in keymaps)
+        (set-on-event obj (keymap-event keymap) (keymap-handler keymap))))
     obj))
 #+END_SRC
 ** text value
@@ -412,7 +418,9 @@ async function code_mirror_Completions(context) {
   ;;  use backticks (`) instead of single or double quotes and include line breaks directly within the string.
   (js-execute obj (format nil "~A.dispatch({ changes: {from: 0, to: ~A.viewState.state.doc.length, insert: `~a`}}); "
                           (js-id obj) (js-id obj)
-                          (ppcre:regex-replace-all "`"  value "\\\\`"))))
+                          (ppcre:regex-replace-all "`" (ppcre:regex-replace-all "\\\\" value
+                                                                                "\\\\\\\\")
+                                                   "\\\\`" ))))
 #+END_SRC
 ** keymap
 ** Demo
