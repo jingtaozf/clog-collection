@@ -29,8 +29,9 @@ window.CodeMirror.Compartment = Compartment;
 window.CodeMirror.EditorState = EditorState;
 window.CodeMirror.ViewUpdate = ViewUpdate;
 
-import { autocompletion } from '@codemirror/autocomplete';
+import { autocompletion, snippetCompletion} from '@codemirror/autocomplete';
 window.CodeMirror.autocompletion = autocompletion;
+window.CodeMirror.snippetCompletion = snippetCompletion;
 
 import jsonview from '@pgrabovets/json-view';
 window.jsonview = jsonview;
