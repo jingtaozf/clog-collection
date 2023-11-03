@@ -312,16 +312,46 @@ function resolve_Clog_CodeMirror_AutoComplete (resolve) {
     }, 10);
 };
 
+function resolve_Clog_CodeMirror_SnippetComplete (resolve) {
+    setTimeout(() => {
+	if (clog['clog-codemirror-snippet-complete-result'])
+	    resolve('resolved');
+	else
+	    resolve_Clog_CodeMirror_SnippetComplete(resolve);
+    }, 10);
+};
+
 async function code_mirror_Completions(context) {
-    let word = context.matchBefore(/\w*/);
-    data = {'word': {'from': word.from, 'to': word.to},
-	    'text': ~A.viewState.state.doc.toString(),
-	    explicit: context.explicit,
-	    pos: context.pos};
-    clog['clog-codemirror-auto-complete-result'] = null;
-    ~A.trigger('clog-codemirror-auto-complete', JSON.stringify(data)); 
-    await new Promise(resolve_Clog_CodeMirror_AutoComplete);
-    return JSON.parse(clog['clog-codemirror-auto-complete-result']);
+    const matchBefore = context.matchBefore(/~a/)
+    if (matchBefore) {
+	console.log('Foudn matchBefore');
+	clog['clog-codemirror-snippet-complete-result'] = null;
+	data = {'word': {'from': matchBefore.from, 'to': matchBefore.to},
+		'text': ~A.viewState.state.doc.toString(),
+		explicit: context.explicit,
+		pos: context.pos};
+	~A.trigger('clog-codemirror-snippet-complete', JSON.stringify(data)); 
+	await new Promise(resolve_Clog_CodeMirror_SnippetComplete);
+	result = JSON.parse(clog['clog-codemirror-snippet-complete-result']);
+	options = result.options;
+	for (i = 0; i < options.length; i++) {
+	    option = options[i];
+	    options[i] = CodeMirror.snippetCompletion(option['value'], {
+		label: option['label'],
+            });
+	}
+	return { from: result['from'], options: options};
+    } else {
+	let word = context.matchBefore(/\w*/);
+	data = {'word': {'from': word.from, 'to': word.to},
+		'text': ~A.viewState.state.doc.toString(),
+		explicit: context.explicit,
+		pos: context.pos};
+	clog['clog-codemirror-auto-complete-result'] = null;
+	~A.trigger('clog-codemirror-auto-complete', JSON.stringify(data)); 
+	await new Promise(resolve_Clog_CodeMirror_AutoComplete);
+	return JSON.parse(clog['clog-codemirror-auto-complete-result']);
+    }
 };
 
 ~A = new CodeMirror.EditorView({
@@ -337,6 +367,8 @@ async function code_mirror_Completions(context) {
                                           tab-size
                                           keymaps
                                           auto-completion
+                                          snippet-completion
+                                          snippet-completion-prefix
                                           extentions
                                           hidden
                                           class
@@ -352,6 +384,8 @@ async function code_mirror_Completions(context) {
                                    ;; a list of keymap for code mirror
                                      keymaps
                                      auto-completion
+                                     snippet-completion
+                                     (snippet-completion-prefix "<\w*")
                                      extentions
                                      (hidden nil)
                                      (class nil)
@@ -382,18 +416,33 @@ async function code_mirror_Completions(context) {
                                      (format t ",~%"))
                                    (finally (write-char #\]))))
                              (write-string ")"))))
-         (auto-completion-js-code (when auto-completion
+         (auto-completion (or auto-completion (when snippet-completion
+                                                ;; when snippet-completion is true, we need to provide a default auto-completion.
+                                                #'(lambda (json)
+                                                    (plist->hash
+                                                     "from" (gethash "from" (gethash "word" json))
+                                                     "options" nil)))))
+         (auto-completion-js-code (when (or auto-completion snippet-completion)
                                     "CodeMirror.autocompletion({override: [code_mirror_Completions]})"))
          (extentions (format nil "~@[~a, ~]~@[~a, ~]~a" extentions auto-completion-js-code keymap-js-code)))
     (change-class obj 'clog-codemirror)
     (js-execute obj (format nil clog.js.codemirror.new
                             tab-size extentions
+                            snippet-completion-prefix
+                            (js-id obj)
+                            (jquery obj)
                             (js-id obj)
                             (jquery obj)
                             (js-id obj)
                             (html-id obj)
                             (js-id obj)
                             (html-id obj)))
+    (when snippet-completion
+      (set-on-event-with-data
+       obj "clog-codemirror-snippet-complete"
+       (lambda (obj data)
+         (js-execute obj (format nil "clog['clog-codemirror-snippet-complete-result'] = ~s"
+                                 (->json (funcall snippet-completion (yason:parse data))))))))
     (when auto-completion
       (set-on-event-with-data
        obj "clog-codemirror-auto-complete"
