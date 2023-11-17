@@ -547,7 +547,13 @@ clog['jsonview'][~s] = new Jsonview.EditorView({
                                         class
                                         html-id
                                         auto-place)
-  (:documentation "Create a new clog-jsonview object in lisp."))
+  (:documentation "Create a new clog-jsonview object in lisp.
+
+`expand' can be one of the following values:
+- t expand all
+- nil do not expand
+- :toplevel expand only the top level
+"))
 #+END_SRC
 **** implementation
 #+BEGIN_SRC lisp
@@ -575,10 +581,13 @@ clog['jsonview'][~s] = new Jsonview.EditorView({
                             json-string
                             (js-id obj)
                             (html-id obj)
-                            (if expand
+                            (if (eq t expand)
                                 "true"
                                 "false")
                             (js-id obj)))
+    (when (eq :toplevel expand)
+      (js-execute obj (format nil "{ var carets = $('#~a .json-container .line .caret-icon'); carets.length > 0 && carets[0].click()}"
+                                   (html-id obj))))
     obj))
 #+END_SRC
 
