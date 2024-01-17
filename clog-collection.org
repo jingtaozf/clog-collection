@@ -470,9 +470,12 @@ async function code_mirror_Completions(context) {
   ;;  use backticks (`) instead of single or double quotes and include line breaks directly within the string.
   (js-execute obj (format nil "~A.dispatch({ changes: {from: 0, to: ~A.viewState.state.doc.length, insert: `~a`}}); "
                           (js-id obj) (js-id obj)
-                          (ppcre:regex-replace-all "`" (ppcre:regex-replace-all "\\\\" value
-                                                                                "\\\\\\\\")
-                                                   "\\\\`" ))))
+                          (iter (with str = value)
+                            (for (from . to) in '(("\\\\" . "\\\\\\\\")
+                                                  ("`" . "\\\\`")
+                                                  ("\\$" . "\\\\$")))
+                            (setf str (ppcre:regex-replace-all from str to))
+                            (finally (return str))))))
 #+END_SRC
 ** keymap
 ** Demo
