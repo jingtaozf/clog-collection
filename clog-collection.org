@@ -297,9 +297,9 @@ let tabSize  = new CodeMirror.Compartment();
 
 let state = CodeMirror.EditorState.create({
     extensions: [
-	CodeMirror.basicSetup,
 	tabSize.of(CodeMirror.EditorState.tabSize.of(~a))
 	~@[~{,~a~}~]
+	,CodeMirror.basicSetup
     ]
 });
 
