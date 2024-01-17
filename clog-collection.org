@@ -47,7 +47,6 @@
 - [[#jsonview][jsonview]]
   - [[#definition-2][definition]]
   - [[#how-to-create-it-2][how to create it]]
-    - [[#js-1][js]]
     - [[#lisp][lisp]]
   - [[#demo-3][Demo]]
     - [[#demo-1-2][demo 1]]
@@ -63,12 +62,13 @@ CLOG Plugin for [[https://js.cytoscape.org/][Cytoscape.js]]
 ** compilation options
 In dev environment, we will disable possible optimization.
 #+BEGIN_SRC lisp :load dev
-(proclaim '(optimize
-            (compilation-speed 0)
-            (debug 3)
-            (safety 3)
-            (space 0)
-            (speed 0)))
+(eval-when (:execute :compile-toplevel :load-toplevel)
+  (proclaim '(optimize
+              (compilation-speed 0)
+              (debug 3)
+              (safety 3)
+              (space 0)
+              (speed 0))))
 #+END_SRC
 ** a new package
 Let's create an individual package for this module.
@@ -299,7 +299,7 @@ let state = CodeMirror.EditorState.create({
     extensions: [
 	CodeMirror.basicSetup,
 	tabSize.of(CodeMirror.EditorState.tabSize.of(~a))
-	~@[,~a~]
+	~@[~{,~a~}~]
     ]
 });
 
@@ -369,7 +369,7 @@ async function code_mirror_Completions(context) {
                                           auto-completion
                                           snippet-completion
                                           snippet-completion-prefix
-                                          extentions
+                                          extensions
                                           hidden
                                           class
                                           html-id
@@ -386,7 +386,7 @@ async function code_mirror_Completions(context) {
                                      auto-completion
                                      snippet-completion
                                      (snippet-completion-prefix "<\w*")
-                                     extentions
+                                     extensions
                                      (hidden nil)
                                      (class nil)
                                      (html-id (symbol-name (gensym "codemirror")))
@@ -424,10 +424,10 @@ async function code_mirror_Completions(context) {
                                                      "options" nil)))))
          (auto-completion-js-code (when (or auto-completion snippet-completion)
                                     "CodeMirror.autocompletion({override: [code_mirror_Completions]})"))
-         (extentions (format nil "~@[~a, ~]~@[~a, ~]~a" extentions auto-completion-js-code keymap-js-code)))
+         (extensions (append (ensure-list extensions) (list auto-completion-js-code) (list keymap-js-code))))
     (change-class obj 'clog-codemirror)
     (js-execute obj (format nil clog.js.codemirror.new
-                            tab-size extentions
+                            tab-size extensions
                             snippet-completion-prefix
                             (js-id obj)
                             (jquery obj)
@@ -496,7 +496,7 @@ async function code_mirror_Completions(context) {
 #+BEGIN_SRC lisp
 (defun codemirror-demo1 (row)
   (let* ((obj (create-clog-codemirror row
-                                      :extentions "language.of(CodeMirror.javascript.javascript())"
+                                      :extensions '("language.of(CodeMirror.javascript.javascript())")
                                       :auto-completion 'codemirror-demo1-auto-completion
                                       :keymaps (list (make-keymap :key "Shift-Enter"
                                                                   :return-value t
@@ -516,26 +516,6 @@ https://github.com/pgrabovets/json-view
   (:documentation "clog-jsonview Object."))
 #+END_SRC
 ** how to create it
-*** js
-#+NAME: clog.js.jsonview.new
-#+BEGIN_SRC js
-let language = new Jsonview.Compartment();
-let tabSize  = new Jsonview.Compartment();
-
-let state = Jsonview.EditorState.create({
-    extensions: [
-	Jsonview.basicSetup,
-	tabSize.of(Jsonview.EditorState.tabSize.of(~a))
-	~@[,~a~]
-    ]
-});
-clog['jsonview']  = clog['jsonview'] || {};
-clog['jsonview'][~s] = new Jsonview.EditorView({
-    state,
-    parent: document.getElementById(~s)
-});
-#+END_SRC
-
 *** lisp
 **** generic method
 #+BEGIN_SRC lisp
