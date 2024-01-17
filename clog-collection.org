@@ -424,7 +424,7 @@ async function code_mirror_Completions(context) {
                                                      "options" nil)))))
          (auto-completion-js-code (when (or auto-completion snippet-completion)
                                     "CodeMirror.autocompletion({override: [code_mirror_Completions]})"))
-         (extensions (append (ensure-list extensions) (list auto-completion-js-code) (list keymap-js-code))))
+         (extensions (append (ensure-list extensions) (ensure-list auto-completion-js-code) (ensure-list keymap-js-code))))
     (change-class obj 'clog-codemirror)
     (js-execute obj (format nil clog.js.codemirror.new
                             tab-size extensions
