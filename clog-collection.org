@@ -136,7 +136,7 @@ Let's create an individual package for this module.
   ;; the key name, for example `Shift-Enter'
   (key (required-argument "key") :type string)
   ;; a handler in lisp side for the above key.
-  (handler (required-argument "handler") :type function)
+  (handler (required-argument "handler") :type (or string function))
   ;; the return value in js side, to determine whether or not the default browser behaviour should take place as well. 
   (return-value nil :type boolean))
 #+END_SRC
@@ -402,18 +402,21 @@ async function code_mirror_Completions(context) {
                              (write-string "CodeMirror.keymap.of(")
                              (if (stringp keymaps)
                                  (write-string keymaps)
-                                 (iter
-                                   (initially (write-char #\[))
+                                 (iter (initially (write-char #\[))
                                    (for keymap in keymaps)
-                                   (format t "{key: '~a', run: (view) => {~a.trigger('~a'); return ~a}}"
-                                           (keymap-key keymap)
-                                           (jquery obj)
-                                           (keymap-event keymap)
-                                           (if (keymap-return-value keymap)
-                                               "true"
-                                               "false"))
                                    (unless (first-iteration-p)
                                      (format t ",~%"))
+                                   (if (stringp (keymap-handler keymap))
+                                       (format t  "{key: '~a', run: ~a}"
+                                               (keymap-key keymap)
+                                               (keymap-handler keymap))
+                                       (format t "{key: '~a', run: (view) => {~a.trigger('~a'); return ~a}}"
+                                               (keymap-key keymap)
+                                               (jquery obj)
+                                               (keymap-event keymap)
+                                               (if (keymap-return-value keymap)
+                                                   "true"
+                                                   "false")))
                                    (finally (write-char #\]))))
                              (write-string ")"))))
          (auto-completion (or auto-completion (when snippet-completion
